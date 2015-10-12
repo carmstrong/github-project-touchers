@@ -1,0 +1,67 @@
+#!/usr/bin/env ruby
+
+require 'csv'
+require 'date'
+require 'octokit'
+
+repo = ARGV.first
+
+# make our GitHub calls here
+client = Octokit::Client.new(:access_token => ENV['GITHUB_ACCESS_TOKEN'], :auto_paginate => true)
+issues = client.search_issues("repo:#{repo}", {:per_page => 10000})
+prs = client.pull_requests(repo, {:per_page => 10000, :state => "all"})
+comments = client.issues_comments(repo, {:per_page => 10000})
+
+touchers = {}
+
+issues.items.each do |issue|
+  author = issue.user.login.to_s
+  if touchers[author].nil?
+    touchers[author] = {}
+    touchers[author]['comment_author'] = 0
+    touchers[author]['issue_author'] = 1
+    touchers[author]['pr_author'] = 0
+  else
+    touchers[author]['issue_author'] = touchers[author]['issue_author']+1
+  end
+end
+
+comments.each do |c|
+  author = c.user.login
+  if touchers[author].nil?
+    touchers[author] = {}
+    touchers[author]['comment_author'] = 1
+    touchers[author]['issue_author'] = 0
+    touchers[author]['pr_author'] = 0
+  else
+    touchers[author]['comment_author'] = touchers[author]['comment_author']+1
+  end
+end
+
+prs.each do |pr|
+  author = pr.user.login
+  if touchers[author].nil?
+    touchers[author] = {}
+    touchers[author]['comment_author'] = 0
+    touchers[author]['issue_author'] = 0
+    touchers[author]['pr_author'] = 1
+  else
+    touchers[author]['pr_author'] = touchers[author]['pr_author']+1
+  end
+end
+
+repo_in_filepath = repo.gsub '/', '_'
+now = Time.now.strftime("%d%m%Y%H%M%S")
+outfile = "#{repo_in_filepath}-#{now}.csv"
+
+CSV.open(outfile, "wb") do |csv|
+  csv << ["id", "name", "company", "location", "email", "num_issues_authored", "num_comments_authored", "num_prs_authored", "num_total_touches"]
+  touchers.each do |id, counts|
+    user = client.user(id)
+    count_issue_author = counts['issue_author']
+    count_comment_author = counts['comment_author']
+    count_pr_author = counts['pr_author']
+    total_touches = count_issue_author + count_comment_author + count_pr_author
+    csv << [id, user.name, user.company, user.location, user.email, count_issue_author, count_comment_author, count_pr_author, total_touches]
+  end
+end

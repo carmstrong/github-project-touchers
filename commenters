@@ -9,6 +9,7 @@ repo = ARGV.first
 # make our GitHub calls here
 client = Octokit::Client.new(:access_token => ENV['GITHUB_ACCESS_TOKEN'], :auto_paginate => true)
 issues = client.search_issues("repo:#{repo}", {:per_page => 10000})
+prs = client.pull_requests(repo, {:per_page => 10000, :state => "all"})
 comments = client.issues_comments(repo, {:per_page => 10000})
 
 touchers = {}
@@ -24,6 +25,15 @@ end
 
 comments.each do |c|
   author = c.user.login
+  if touchers[author].nil?
+    touchers[author] = 1
+  else
+    touchers[author] = touchers[author]+1
+  end
+end
+
+prs.each do |pr|
+  author = pr.user.login
   if touchers[author].nil?
     touchers[author] = 1
   else

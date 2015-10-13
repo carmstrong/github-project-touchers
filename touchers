@@ -8,13 +8,13 @@ repo = ARGV.first
 
 # make our GitHub calls here
 client = Octokit::Client.new(:access_token => ENV['GITHUB_ACCESS_TOKEN'], :auto_paginate => true)
-issues = client.search_issues("repo:#{repo}", {:per_page => 10000})
-prs = client.pull_requests(repo, {:per_page => 10000, :state => "all"})
-comments = client.issues_comments(repo, {:per_page => 10000})
+issues = client.issues(repo, {:state => "all"})
+prs = client.pull_requests(repo, {:state => "all"})
+comments = client.issues_comments(repo)
 
 touchers = {}
 
-issues.items.each do |issue|
+issues.each do |issue|
   author = issue.user.login.to_s
   if touchers[author].nil?
     touchers[author] = {}

@@ -58,7 +58,8 @@ CSV.open(outfile, "wb") do |csv|
   csv << ["id", "name", "company", "location", "email", "num_issues_authored", "num_comments_authored", "num_prs_authored", "num_total_touches"]
   touchers.each do |id, counts|
     user = client.user(id)
-    count_issue_author = counts['issue_author']
+    # PRs are technically issues, so we have to infer this count ourselves
+    count_issue_author = counts['issue_author'] - counts['pr_author']
     count_comment_author = counts['comment_author']
     count_pr_author = counts['pr_author']
     total_touches = count_issue_author + count_comment_author + count_pr_author
